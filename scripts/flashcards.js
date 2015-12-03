@@ -24,7 +24,8 @@ var flashcards = {
       phrase: "Hej, hur mår du?",
       responses: [
         "c000004",
-        "c000005"
+        "c000005",
+        "c000006"
       ]
     },
     c000003: {
@@ -51,20 +52,27 @@ var flashcards = {
     c000006: {
       phrase: "Jag mår bra.",
       responses: [
+        "e000000"
       ]
     },
     c000007: {
       phrase: "Jag är toppen!",
       responses: [
+        "e000000"
       ]
     },
+    e000000: {
+      phrase: "SLUTET"
+    }
   },
   getNextCards: function(currentCard) {
     var multipleChoice = [];
     var nexts = currentCard.responses;
-    for (var idx in nexts) {
-      var nextCardId = nexts[idx];
-      multipleChoice.push(this.allCards[nextCardId]);
+    if (!!nexts) {
+      for (var idx in nexts) {
+        var nextCardId = nexts[idx];
+        multipleChoice.push(this.allCards[nextCardId]);
+      }
     }
     return multipleChoice;
   },

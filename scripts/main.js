@@ -9,7 +9,9 @@ var App = React.createClass({
   getInitialState: function() {
     return {
       currentCard: null,
-      prevCard: null
+      prevCard: null,
+      showMC: false,
+      conversationEnded: false
     };
   },
   componentWillMount: function() {
@@ -17,10 +19,21 @@ var App = React.createClass({
   },
   startNewConvo: function() {
     // ideallly this has a sort of timeout thing that's like "starting new convo..."
-    this.setState({currentCard: flashcards.pickRandom(), prevCard: null});
+    this.setState({
+      currentCard: flashcards.pickRandom(),
+      prevCard: null,
+      showMC: false,
+      conversationEnded: false
+    });
   },
   setCurrent: function(c,p) {
     this.setState({currentCard: c, prevCard: p});
+  },
+  toggleMC: function() {
+    this.setState({showMC: !this.state.showMC});
+  },
+  setConversationEnd: function() {
+    this.setState({conversationEnded: true});
   },
   render: function() {
     return (
@@ -30,6 +43,10 @@ var App = React.createClass({
           prevCard={this.state.prevCard}
           currentCard={this.state.currentCard}
           setCurrent={this.setCurrent}
+          toggleMC={this.toggleMC}
+          showMC={this.state.showMC}
+          setConversationEnd={this.setConversationEnd}
+          conversationEnded={this.state.conversationEnded}
         />
       </div>
     );
@@ -48,8 +65,19 @@ var ConversationScreen = React.createClass({
     var phrase = this.refs.myResponse.value;
     var yourResponse = flashcards.getCardFromPhrase(phrase);
     if (yourResponse) {
+      var yourEnd = (yourResponse.responses.length === 1 && yourResponse.responses[0] === "e000000"); // if it's the end, don't show response box
+      if (yourEnd) {
+        this.props.setConversationEnd();
+      }
       var nextCards = flashcards.getNextCards(yourResponse);
       var newCurrentCard = flashcards.aRandom(nextCards);
+      // check that this card is not the end
+      if (!yourEnd) {
+        var nextEnd = (newCurrentCard.responses.length === 1 && newCurrentCard.responses[0] === "e000000");
+        if (nextEnd) {
+          this.props.setConversationEnd();
+        }
+      }
       this.props.setCurrent(newCurrentCard,yourResponse);
       this.refs.myResponse.value = ''; //this is jank
     } else {
@@ -61,18 +89,26 @@ var ConversationScreen = React.createClass({
     // eventually this function will generate a list of possible answers
     // and allow you to choose one
     // it should show a <Choices fromCard={this.currentCard} />
-    // for now i'll just have it tell you that you suck
-    this.refs.mc.value = "google it, son";
+
+    // change the state to "show multiple choice"
+    this.props.toggleMC();
   },
   render: function() {
-    var prevResponse = this.props.prevCard ? this.props.prevCard.phrase : '';
+    var prevResponse = this.props.prevCard ? (<p className="myPrevResponse">Du sa: {this.props.prevCard.phrase}</p>) : '';
+    var respondable = this.props.conversationEnded ? '' :
+      (
+        <div className="response">
+          <input type="text" ref="myResponse"/>
+          <button onClick={this.respond}>Säga</button>
+        </div>
+      );
+    var multipleChoiceDiv = this.props.showMC ? (<div className="multipleChoices" ref="mc">mc</div>) : '';
     return (
       <div className="conversation">
-        <p className="myPrevResponse">Du sa: {prevResponse}</p>
+        {prevResponse}
         <Flashcard card={this.props.currentCard}/>
-        <input type="text" ref="myResponse"/>
-        <button onClick={this.respond}>Säga</button>
-        <div className="multipleChoices" ref="mc"></div>
+        {respondable}
+        {multipleChoiceDiv}
         <button onClick={this.showMultipleChoice}>Jag förstår inte</button>
       </div>
     )
