@@ -1,9 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+import Request from 'superagent';
 import flashcards from './flashcards';
-
-// ok here's where i start confusing the representation of the data and the structure of the data
 
 var App = React.createClass({
   getInitialState: function() {
@@ -14,13 +13,30 @@ var App = React.createClass({
       conversationEnded: false
     };
   },
+  componentDidMount: function() {
+    this.startNewConvo();
+  },
+  getRandom: function() {
+    return new Promise(function(resolve, reject) {
+      Request.get('http://localhost:3000/getRandom')
+        .end(function(err, res) {
+          var card = res.body[0];
+          resolve(card);
+        });
+      });
+  },
   componentWillMount: function() {
     this.startNewConvo();
   },
   startNewConvo: function() {
-    // ideallly this has a sort of timeout thing that's like "starting new convo..."
+    this.getRandom().then(function(card) {
+      if (this.isMounted()) {
+        this.setState({
+          currentCard: card
+        });
+      }
+    }.bind(this)),
     this.setState({
-      currentCard: flashcards.pickRandom(),
       prevCard: null,
       showMC: false,
       conversationEnded: false
@@ -103,10 +119,11 @@ var ConversationScreen = React.createClass({
         </div>
       );
     var multipleChoiceDiv = this.props.showMC ? (<div className="multipleChoices" ref="mc">mc</div>) : '';
+    var cardLoaded = this.props.currentCard ? (<Flashcard card={this.props.currentCard}/>) : (<p>Loading...</p>);
     return (
       <div className="conversation">
         {prevResponse}
-        <Flashcard card={this.props.currentCard}/>
+        {cardLoaded}
         {respondable}
         {multipleChoiceDiv}
         <button onClick={this.showMultipleChoice}>Jag förstår inte</button>

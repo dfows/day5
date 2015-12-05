@@ -10,6 +10,17 @@ var app = express();
 var client = new pg.Client(db);
 client.connect();
 
+function stripPunctuation(phrase) {
+  return phrase.toLowerCase().replace(/[^A-Za-z\s]/g,'');
+}
+
+app.use('/', function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+  res.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type");
+  next();
+});
+
 app.get('/getNextCards', function(req,res) {
   var params = req.query;
   var currentCardId = params.currentCardId;
