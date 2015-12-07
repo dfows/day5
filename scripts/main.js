@@ -2,12 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 import Request from 'superagent';
-import flashcards from './flashcards';
+import helpers from './flashcards';
 
 var App = React.createClass({
   getInitialState: function() {
     return {
       currentCard: null,
+      convoId: null,
       prevCard: null,
       showMC: false,
       conversationEnded: false
@@ -32,7 +33,8 @@ var App = React.createClass({
     this.getRandom().then(function(card) {
       if (this.isMounted()) {
         this.setState({
-          currentCard: card
+          currentCard: card,
+          convoId: card.id
         });
       }
     }.bind(this)),
@@ -42,8 +44,11 @@ var App = React.createClass({
       conversationEnded: false
     });
   },
-  setCurrent: function(c,p) {
-    this.setState({currentCard: c, prevCard: p});
+  setCurrent: function(c) {
+    this.setState({currentCard: c});
+  },
+  setPrev: function(p) {
+    this.setState({prevCard: p});
   },
   toggleMC: function() {
     this.setState({showMC: !this.state.showMC});
@@ -58,7 +63,9 @@ var App = React.createClass({
         <ConversationScreen
           prevCard={this.state.prevCard}
           currentCard={this.state.currentCard}
+          convoId={this.state.convoId}
           setCurrent={this.setCurrent}
+          setPrev={this.setPrev}
           toggleMC={this.toggleMC}
           showMC={this.state.showMC}
           setConversationEnd={this.setConversationEnd}
@@ -76,30 +83,98 @@ var FlashcardCreator = React.createClass({
 });
 */
 
+function getNexts(card, convoId, callback) {
+  Request.get('http://localhost:3000/getNextCards')
+    .query({currentCardId: card.id, convoId: convoId})
+    .end(function(err, res) {
+      if (res.body.length > 1 || res.body[0].next_phrase_id !== 0) {
+        callback(res.body);
+      }
+    });
+}
+
 var ConversationScreen = React.createClass({
   respond: function() {
+    var yourResponse;
+    var that = this;
     var phrase = this.refs.myResponse.value;
-    var yourResponse = flashcards.getCardFromPhrase(phrase);
-    if (yourResponse) {
-      var yourEnd = (yourResponse.responses.length === 1 && yourResponse.responses[0] === "e000000"); // if it's the end, don't show response box
-      if (yourEnd) {
-        this.props.setConversationEnd();
-      }
-      var nextCards = flashcards.getNextCards(yourResponse);
-      var newCurrentCard = flashcards.aRandom(nextCards);
-      // check that this card is not the end
-      if (!yourEnd) {
-        var nextEnd = (newCurrentCard.responses.length === 1 && newCurrentCard.responses[0] === "e000000");
-        if (nextEnd) {
-          this.props.setConversationEnd();
-        }
-      }
-      this.props.setCurrent(newCurrentCard,yourResponse);
-      this.refs.myResponse.value = ''; //this is jank
-    } else {
-      this.props.sendError("Your response was not found.");
-      // add option to add the response as a possible response
-    }
+    var yourResponse = new Promise(function(resolve, reject) {
+      Request.get('http://localhost:3000/getCardFromPhrase')
+        .query({phrase: phrase})
+        .end(function(err, res) {
+          if (res.body.length > 0) {
+            var card = res.body[0];
+            resolve(card);
+          } else {
+            console.log(res);
+            //that.props.sendError("Your response was not found.");
+            // add option to add the response as a possible response
+          }
+        });
+      }).then(function(card) {
+        // check that the card was a valid response
+        var prevCard = that.props.currentCard;
+        // what are some of the nexts of the prevCard
+        return new Promise(function(resolve, reject) {
+          Request.get('http://localhost:3000/isCardNext')
+            .query({prevId: prevCard.id, nextId: card.id, convoId: that.props.convoId})
+            .end(function(err,res) {
+              if (res.body.isIn) {
+                resolve(card);
+              } else {
+                console.log(res);
+                //that.props.sendError("Your response was not found.");
+                // add option to add the response as a possible response
+              }
+              that.refs.myResponse.value = ''; //this is jank
+            });
+          });
+      }).then(function(card) {
+        var cardId = card.id;
+        var convoId = that.props.convoId;
+        return new Promise(function(resolve, reject) {
+          // if there are nextcards, then it's not the end. if there arent nextcards, it's the end.
+          // if there are nextcards, i want to know also if those are the end.
+          Request.get('http://localhost:3000/getNextCards')
+            .query({currentCardId: card.id, convoId: that.props.convoId})
+            .end(function(err, res) {
+              if (res.body.length === 1 && res.body[0].next_phrase_id === 0) {
+                that.props.setConversationEnd();
+              }
+              // if it could have more than just end, do this
+              resolve(res.body);
+              console.log("your card",card);
+              that.props.setPrev(card);
+            });
+        });
+      }).then(function(mappings) {
+        // pick a random one out of the available nexts
+        var mapping = helpers.aRandom(mappings);
+        // check if *that* card is an end (if its next is just an end)
+        return new Promise(function(resolve, reject) {
+          Request.get('http://localhost:3000/getNextCards')
+            .query({currentCardId: mapping.next_phrase_id, convoId: that.props.convoId})
+            .end(function(err,res) {
+              if (res.body.length === 1 && res.body[0].next_phrase_id === 0) {
+                that.props.setConversationEnd();
+              }
+              console.log("random computercard",mapping);
+              resolve(mapping);
+            });
+        });
+      }).then(function(mapping) {
+        console.log(mapping,"mapping about to get card", mapping.next_phrase_id);
+        return new Promise(function(resolve, reject) {
+          Request.get('http://localhost:3000/getCardFromId')
+            .query({cardId: mapping.next_phrase_id})
+            .end(function(err,res) {
+              resolve(res.body[0])
+            });
+        });
+      }).then(function(card) {
+        console.log("last cascade");
+        that.props.setCurrent(card);
+      });
   },
   showMultipleChoice: function() {
     // eventually this function will generate a list of possible answers
