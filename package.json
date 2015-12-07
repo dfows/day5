@@ -2,9 +2,9 @@
   "name": "flashcards",
   "version": "1.0.0",
   "description": "zachlatta wants me to make yet another editable list of things",
-  "main": "index.js",
+  "main": "scripts/app.js",
   "scripts": {
-    "start": "gulp"
+    "start": "node scripts/app.js"
   },
   "keywords": [
     "lists"
@@ -25,6 +25,8 @@
     "gulp-util": "3.0.7",
     "history": "1.12.5",
     "install": "0.1.8",
+    "nodemon": "^1.8.1",
+    "path": "^0.12.7",
     "pg": "^4.4.3",
     "pg-native": "^1.9.0",
     "re-base": "1.2.1",

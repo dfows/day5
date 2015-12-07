@@ -1,8 +1,10 @@
 var pg = require('pg');
 var db = "postgres://kwok:qldo@localhost:5432/kwok";
+var path = require('path');
 
 var express = require('express');
 var app = express();
+app.use(express.static(path.join(__dirname, '/../public')));
 
 var client = new pg.Client(db);
 client.connect();
@@ -68,6 +70,9 @@ app.get('/getRandom', function(req,res) {
   client.query("SELECT * FROM beginningCards ORDER BY RANDOM() LIMIT 1", function(err, result) {
     res.json(result.rows);
   });
+});
+
+app.get('/', function(req, res) {
 });
 
 app.listen(process.env.PORT || 3000);

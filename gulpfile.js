@@ -12,7 +12,7 @@ var historyApiFallback = require('connect-history-api-fallback');
 
 gulp.task('styles', function() {
   gulp.src('css/style.css')
-    .pipe(gulp.dest('./build/css/'))
+    .pipe(gulp.dest('./public/css/'))
     .pipe(reload({stream:true}))
 });
 
@@ -49,7 +49,7 @@ function buildScript(file, watch) {
     return stream
       .on('error', handleErrors)
       .pipe(source(file))
-      .pipe(gulp.dest('./build/'))
+      .pipe(gulp.dest('./public/'))
       .pipe(reload({stream: true}))
   }
 
