@@ -26,12 +26,22 @@ app.use('/', function(req, res, next) {
   next();
 });
 
-app.get('/getNextCards', function(req,res) {
+app.get('/getMappings', function(req,res) {
   var params = req.query;
   var currentCardId = params.currentCardId;
   var convoId = params.convoId;
   getNextCards(convoId, currentCardId, function(results) {
     res.json(results);
+  });
+});
+
+app.get('/getNextCards', function(req,res) {
+  var params = req.query;
+  var currentCardId = params.currentCardId;
+  var convoId = params.convoId;
+  client.query('SELECT * FROM allCards WHERE id IN (SELECT next_phrase_id FROM mappings WHERE conv_id = '+convoId+' AND prev_phrase_id = '+currentCardId+')', function(err, result) {
+    console.log(result.rows);
+    res.json(result.rows);
   });
 });
 

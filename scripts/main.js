@@ -10,6 +10,7 @@ var App = React.createClass({
       currentCard: null,
       convoId: null,
       prevCard: null,
+      choices: [],
       showMC: false,
       conversationEnded: false
     };
@@ -25,6 +26,19 @@ var App = React.createClass({
           resolve(card);
         });
       });
+  },
+  getChoices: function() {
+    var that = this;
+    return new Promise(function(resolve, reject) {
+      Request.get('http://localhost:3000/getNextCards')
+        .query({currentCardId: that.state.currentCard.id, convoId: that.state.convoId})
+        .end(function(err, res) {
+          console.log("getting choices from App",res.body);
+          var choices = res.body;
+          that.state.choices = choices;
+          that.setState({choices: that.state.choices});
+        });
+    });
   },
   componentWillMount: function() {
     this.startNewConvo();
@@ -51,6 +65,7 @@ var App = React.createClass({
     this.setState({prevCard: p});
   },
   toggleMC: function() {
+    if (!this.state.showMC) {this.getChoices();}
     this.setState({showMC: !this.state.showMC});
   },
   setConversationEnd: function() {
@@ -68,6 +83,7 @@ var App = React.createClass({
           setPrev={this.setPrev}
           toggleMC={this.toggleMC}
           showMC={this.state.showMC}
+          choices={this.state.choices}
           setConversationEnd={this.setConversationEnd}
           conversationEnded={this.state.conversationEnded}
         />
@@ -84,7 +100,7 @@ var FlashcardCreator = React.createClass({
 */
 
 function getNexts(card, convoId, callback) {
-  Request.get('http://localhost:3000/getNextCards')
+  Request.get('http://localhost:3000/getMappings')
     .query({currentCardId: card.id, convoId: convoId})
     .end(function(err, res) {
       if (res.body.length > 1 || res.body[0].next_phrase_id !== 0) {
@@ -135,7 +151,7 @@ var ConversationScreen = React.createClass({
         return new Promise(function(resolve, reject) {
           // if there are nextcards, then it's not the end. if there arent nextcards, it's the end.
           // if there are nextcards, i want to know also if those are the end.
-          Request.get('http://localhost:3000/getNextCards')
+          Request.get('http://localhost:3000/getMappings')
             .query({currentCardId: card.id, convoId: that.props.convoId})
             .end(function(err, res) {
               if (res.body.length === 1 && res.body[0].next_phrase_id === 0) {
@@ -152,7 +168,7 @@ var ConversationScreen = React.createClass({
         var mapping = helpers.aRandom(mappings);
         // check if *that* card is an end (if its next is just an end)
         return new Promise(function(resolve, reject) {
-          Request.get('http://localhost:3000/getNextCards')
+          Request.get('http://localhost:3000/getMappings')
             .query({currentCardId: mapping.next_phrase_id, convoId: that.props.convoId})
             .end(function(err,res) {
               if (res.body.length === 1 && res.body[0].next_phrase_id === 0) {
@@ -179,9 +195,7 @@ var ConversationScreen = React.createClass({
   showMultipleChoice: function() {
     // eventually this function will generate a list of possible answers
     // and allow you to choose one
-    // it should show a <Choices fromCard={this.currentCard} />
 
-    // change the state to "show multiple choice"
     this.props.toggleMC();
   },
   render: function() {
@@ -193,7 +207,8 @@ var ConversationScreen = React.createClass({
           <button onClick={this.respond}>Säga</button>
         </div>
       );
-    var multipleChoiceDiv = this.props.showMC ? (<div className="multipleChoices" ref="mc">mc</div>) : '';
+    var multipleChoiceDiv = this.props.showMC ? (<Choices choices={this.props.choices} />) : '';
+    var btnText = this.props.showMC ? 'Jag förstår nu' : 'Jag förstår inte';
     var cardLoaded = this.props.currentCard ? (<Flashcard card={this.props.currentCard}/>) : (<p>Loading...</p>);
     return (
       <div className="conversation">
@@ -201,7 +216,7 @@ var ConversationScreen = React.createClass({
         {cardLoaded}
         {respondable}
         {multipleChoiceDiv}
-        <button onClick={this.showMultipleChoice}>Jag förstår inte</button>
+        <button onClick={this.showMultipleChoice}>{btnText}</button>
       </div>
     )
   }
@@ -212,6 +227,19 @@ var Flashcard = React.createClass({
     var card = this.props.card;
     return (
       <p className="phrase">{card.phrase}</p>
+    );
+  }
+});
+
+var Choices = React.createClass({
+  render: function() {
+    var choices = this.props.choices.map(function(choice) {
+      return (<li key={choice.id}>{choice.phrase}</li>);
+    });
+    return (
+      <ul>
+        {choices}
+      </ul>
     );
   }
 });

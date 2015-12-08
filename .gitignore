@@ -1,2 +1,4 @@
 build/*
+public/main.js
+public/css/*
 node_modules/*
