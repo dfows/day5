@@ -38,7 +38,6 @@ var App = React.createClass({
       Request.get('/getNextCards')
         .query({currentCardId: that.state.currentCard.id, convoId: that.state.convoId})
         .end(function(err, res) {
-          console.log("getting choices from App",res.body);
           var choices = res.body;
           that.state.choices = choices;
           that.setState({choices: that.state.choices});
@@ -69,9 +68,12 @@ var App = React.createClass({
   setPrev: function(p) {
     this.setState({prevCard: p});
   },
-  toggleMC: function() {
+  setMCHidden: function() {
+    this.setState({showMC: false});
+  },
+  setMCVisible: function() {
     if (!this.state.showMC) {this.getChoices();}
-    this.setState({showMC: !this.state.showMC});
+    this.setState({showMC: true});
   },
   setConversationEnd: function() {
     this.setState({conversationEnded: true});
@@ -86,7 +88,8 @@ var App = React.createClass({
           convoId={this.state.convoId}
           setCurrent={this.setCurrent}
           setPrev={this.setPrev}
-          toggleMC={this.toggleMC}
+          setMCHidden={this.setMCHidden}
+          setMCVisible={this.setMCVisible}
           showMC={this.state.showMC}
           choices={this.state.choices}
           setConversationEnd={this.setConversationEnd}
@@ -121,6 +124,7 @@ var ConversationScreen = React.createClass({
     var yourResponse;
     var that = this;
     var phrase = this.refs.myResponse.value;
+    that.props.setMCHidden();
     that.props.showError(null);
     var yourResponse = new Promise(function(resolve, reject) {
       Request.get('/getCardFromPhrase')
@@ -201,7 +205,11 @@ var ConversationScreen = React.createClass({
     // eventually this function will generate a list of possible answers
     // and allow you to choose one
 
-    this.props.toggleMC();
+    if (!this.props.showMC) {
+      this.props.setMCVisible();
+    } else {
+      this.props.setMCHidden();
+    }
   },
   render: function() {
     var prevResponse = this.props.prevCard ? (<p className="myPrevResponse">Du sa: {this.props.prevCard.phrase}</p>) : '';

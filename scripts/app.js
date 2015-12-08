@@ -1,10 +1,10 @@
 var pg = require('pg');
-var db = "postgres://kwok:qldo@localhost:5432/kwok";
+var db = process.env.DATABASE_URL || "postgres://kwok:qldo@localhost:5432/kwok";
 var path = require('path');
 
 var express = require('express');
 var app = express();
-app.use(express.static(path.join(__dirname, '/../public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 var client = new pg.Client(db);
 client.connect();
