@@ -25,7 +25,7 @@ var App = React.createClass({
   },
   getRandom: function() {
     return new Promise(function(resolve, reject) {
-      Request.get('http://localhost:3000/getRandom')
+      Request.get('/getRandom')
         .end(function(err, res) {
           var card = res.body[0];
           resolve(card);
@@ -35,7 +35,7 @@ var App = React.createClass({
   getChoices: function() {
     var that = this;
     return new Promise(function(resolve, reject) {
-      Request.get('http://localhost:3000/getNextCards')
+      Request.get('/getNextCards')
         .query({currentCardId: that.state.currentCard.id, convoId: that.state.convoId})
         .end(function(err, res) {
           console.log("getting choices from App",res.body);
@@ -107,7 +107,7 @@ var FlashcardCreator = React.createClass({
 */
 
 function getNexts(card, convoId, callback) {
-  Request.get('http://localhost:3000/getMappings')
+  Request.get('/getMappings')
     .query({currentCardId: card.id, convoId: convoId})
     .end(function(err, res) {
       if (res.body.length > 1 || res.body[0].next_phrase_id !== 0) {
@@ -123,7 +123,7 @@ var ConversationScreen = React.createClass({
     var phrase = this.refs.myResponse.value;
     that.props.showError(null);
     var yourResponse = new Promise(function(resolve, reject) {
-      Request.get('http://localhost:3000/getCardFromPhrase')
+      Request.get('/getCardFromPhrase')
         .query({phrase: phrase})
         .end(function(err, res) {
           if (res.body.length > 0) {
@@ -139,7 +139,7 @@ var ConversationScreen = React.createClass({
         var prevCard = that.props.currentCard;
         // what are some of the nexts of the prevCard
         return new Promise(function(resolve, reject) {
-          Request.get('http://localhost:3000/isCardNext')
+          Request.get('/isCardNext')
             .query({prevId: prevCard.id, nextId: card.id, convoId: that.props.convoId})
             .end(function(err,res) {
               if (res.body.isIn) {
@@ -157,7 +157,7 @@ var ConversationScreen = React.createClass({
         return new Promise(function(resolve, reject) {
           // if there are nextcards, then it's not the end. if there arent nextcards, it's the end.
           // if there are nextcards, i want to know also if those are the end.
-          Request.get('http://localhost:3000/getMappings')
+          Request.get('/getMappings')
             .query({currentCardId: card.id, convoId: that.props.convoId})
             .end(function(err, res) {
               if (res.body.length === 1 && res.body[0].next_phrase_id === 0) {
@@ -174,7 +174,7 @@ var ConversationScreen = React.createClass({
         var mapping = helpers.aRandom(mappings);
         // check if *that* card is an end (if its next is just an end)
         return new Promise(function(resolve, reject) {
-          Request.get('http://localhost:3000/getMappings')
+          Request.get('/getMappings')
             .query({currentCardId: mapping.next_phrase_id, convoId: that.props.convoId})
             .end(function(err,res) {
               if (res.body.length === 1 && res.body[0].next_phrase_id === 0) {
@@ -187,7 +187,7 @@ var ConversationScreen = React.createClass({
       }).then(function(mapping) {
         console.log(mapping,"mapping about to get card", mapping.next_phrase_id);
         return new Promise(function(resolve, reject) {
-          Request.get('http://localhost:3000/getCardFromId')
+          Request.get('/getCardFromId')
             .query({cardId: mapping.next_phrase_id})
             .end(function(err,res) {
               resolve(res.body[0])
