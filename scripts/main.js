@@ -7,6 +7,7 @@ import helpers from './flashcards';
 var App = React.createClass({
   getInitialState: function() {
     return {
+      errorMsg: null,
       currentCard: null,
       convoId: null,
       prevCard: null,
@@ -17,6 +18,10 @@ var App = React.createClass({
   },
   componentDidMount: function() {
     this.startNewConvo();
+  },
+  showError: function(errorMsg) {
+    this.state.errorMsg = errorMsg;
+    this.setState({errorMsg: this.state.errorMsg});
   },
   getRandom: function() {
     return new Promise(function(resolve, reject) {
@@ -86,6 +91,8 @@ var App = React.createClass({
           choices={this.state.choices}
           setConversationEnd={this.setConversationEnd}
           conversationEnded={this.state.conversationEnded}
+          showError={this.showError}
+          errorMsg={this.state.errorMsg}
         />
       </div>
     );
@@ -114,6 +121,7 @@ var ConversationScreen = React.createClass({
     var yourResponse;
     var that = this;
     var phrase = this.refs.myResponse.value;
+    that.props.showError(null);
     var yourResponse = new Promise(function(resolve, reject) {
       Request.get('http://localhost:3000/getCardFromPhrase')
         .query({phrase: phrase})
@@ -122,8 +130,7 @@ var ConversationScreen = React.createClass({
             var card = res.body[0];
             resolve(card);
           } else {
-            console.log(res);
-            //that.props.sendError("Your response was not found.");
+            that.props.showError("Your response was not recognized.");
             // add option to add the response as a possible response
           }
         });
@@ -138,8 +145,7 @@ var ConversationScreen = React.createClass({
               if (res.body.isIn) {
                 resolve(card);
               } else {
-                console.log(res);
-                //that.props.sendError("Your response was not found.");
+                that.props.showError("Your response did not appear to be valid.");
                 // add option to add the response as a possible response
               }
               that.refs.myResponse.value = ''; //this is jank
@@ -188,7 +194,6 @@ var ConversationScreen = React.createClass({
             });
         });
       }).then(function(card) {
-        console.log("last cascade");
         that.props.setCurrent(card);
       });
   },
@@ -200,6 +205,7 @@ var ConversationScreen = React.createClass({
   },
   render: function() {
     var prevResponse = this.props.prevCard ? (<p className="myPrevResponse">Du sa: {this.props.prevCard.phrase}</p>) : '';
+    var error = this.props.errorMsg ? (<p className="errorMsg">{this.props.errorMsg}</p>) : '';
     var respondable = this.props.conversationEnded ? '' :
       (
         <div className="response">
@@ -214,6 +220,7 @@ var ConversationScreen = React.createClass({
       <div className="conversation">
         {prevResponse}
         {cardLoaded}
+        {error}
         {respondable}
         {multipleChoiceDiv}
         <button onClick={this.showMultipleChoice}>{btnText}</button>
