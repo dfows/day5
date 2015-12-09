@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+import {History, Router, Route} from 'react-router';
+import {createHistory} from 'history';
+
 import Request from 'superagent';
 import helpers from './flashcards';
 
@@ -259,4 +262,43 @@ var Choices = React.createClass({
   }
 });
 
-ReactDOM.render(<App />, document.querySelector('#main'));
+var SignInPage = React.createClass({
+  mixins: [History],
+  signIn: function() {
+    Request.post('/signIn')
+      .send({username: this.refs.username.value, password: this.refs.password.value})
+      .end(function(err, res) {
+        if (res.errorMsg) {
+          // this.props.errorMsg is 'bad creds'
+          // also render the errorMsg
+        } else {
+          // set localStorage token
+          // navigate to wherever
+        }
+      });
+  },
+  continue: function() {
+    if (confirm("you will not be able to contribute without signing in")) {
+      this.history.pushState(null,'/beginConversation');
+    }
+  },
+  render: function() {
+    return (
+      <div>
+        <input type="text" ref="username" placeholder="username"/>
+        <input type="password" ref="password" placeholder="password"/>
+        <button onClick={this.signIn}>Sign In</button>
+        <button onClick={this.continue}>Continue without Signing In</button>
+      </div>
+    );
+  }
+});
+
+var routes = (
+  <Router history={createHistory()}>
+    <Route path="/" component={SignInPage}/>
+    <Route path="/beginConversation" component={App}/>
+  </Router>
+);
+
+ReactDOM.render(routes, document.querySelector('#main'));

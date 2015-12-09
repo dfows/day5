@@ -1,10 +1,13 @@
 var pg = require('pg');
 var db = process.env.DATABASE_URL || "postgres://kwok:qldo@localhost:5432/kwok";
 var path = require('path');
+var bodyParser = require('body-parser');
 
 var express = require('express');
 var app = express();
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../public')))
+  .use(bodyParser.urlencoded({extended:false}))
+  .use(bodyParser.json());
 
 var client = new pg.Client(db);
 client.connect();
@@ -24,6 +27,24 @@ app.use('/', function(req, res, next) {
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
   res.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type");
   next();
+});
+
+app.post('/signIn', function(req,res) {
+  var user = req.body.username;
+  var pass = req.body.password;
+  // look up to see if this record exists in table of users
+  // btw i need a good hash function cuz i aint about to store passwords as fuckin strings aight i aint that one
+  client.query('SELECT * FROM users WHERE username = '+user+' AND password = '+pass, function (err, result) {
+    // do stuff
+    if (result.rows < 1) {
+      // user not found; credentials wrong and idgaf about you
+      // maybe send an email to me so i can know what the hell happened
+      res.send({errorMsg: "bad credentials"});
+    } else {
+      // return a thing that says logged in, on the frontend i'll set a token in localstorage or something
+      res.send(result.rows);
+    }
+  });
 });
 
 app.get('/getMappings', function(req,res) {
