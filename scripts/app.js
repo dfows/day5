@@ -34,16 +34,51 @@ app.post('/signIn', function(req,res) {
   var pass = req.body.password;
   // look up to see if this record exists in table of users
   // btw i need a good hash function cuz i aint about to store passwords as fuckin strings aight i aint that one
-  client.query('SELECT * FROM users WHERE username = '+user+' AND password = '+pass, function (err, result) {
-    // do stuff
-    if (result.rows < 1) {
-      // user not found; credentials wrong and idgaf about you
-      // maybe send an email to me so i can know what the hell happened
-      res.send({errorMsg: "bad credentials"});
-    } else {
+  return new Promise(function(resolve, reject) {
+    client.query('SELECT * FROM users WHERE username = \''+user+'\' AND password = \''+pass+'\'', function (err, result) {
+      // do stuff
+      if (err || result.rows.length < 1) {
+        // user not found; credentials wrong
+        // maybe send an email to me so i can know what the hell happened
+        reject("not found");
+      } else {
+        // make another query that's like, yo set the token
+        console.log(result.rows[0]);
+        resolve(result.rows[0].id);
+      }
+    });
+  }).then(function(id) {
+    var timestamp = (new Date()).getTime();
+    client.query('UPDATE users SET last_logged_in_token = '+timestamp+' WHERE id = '+id, function(err, result) {
       // return a thing that says logged in, on the frontend i'll set a token in localstorage or something
-      res.send(result.rows);
-    }
+      res.send({token: timestamp});
+    });
+  }).catch(function(msg) {
+    res.status(404).send({errorMsg: msg});
+  });
+});
+
+app.post('/checkToken', function(req,res) {
+  // security holes 5eva
+  var token = req.body.token;
+  return new Promise(function(resolve, reject) {
+    client.query('SELECT * FROM users WHERE last_logged_in_token = \''+token+'\'', function(err, result) {
+      if (err) {
+        // bad credentials, please login
+        reject(err);
+      } else {
+        // return a thing that says logged in
+        resolve(result.rows[0].id);
+      }
+    });
+  }).then(function(id){
+    var timestamp = (new Date()).getTime();
+    client.query('UPDATE users SET last_logged_in_token = '+timestamp+' WHERE id = '+id, function(err, result) {
+      // return a thing that says logged in, on the frontend i'll set a token in localstorage or something
+      res.send({token: timestamp});
+    });
+  }).catch(function(msg) {
+    res.status(404).send({errorMsg: msg});
   });
 });
 

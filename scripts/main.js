@@ -7,7 +7,60 @@ import {createHistory} from 'history';
 import Request from 'superagent';
 import helpers from './flashcards';
 
+function errorAlert(err) {
+  alert(err);
+}
+
 var App = React.createClass({
+  mixins: [History],
+  getInitialState: function() {
+    return {
+      signedIn: false
+    }
+  },
+  componentWillMount: function() {
+    // check for token
+    var that = this;
+    var token = localStorage.getItem('convoToken');
+    if (token) {
+      // maybe i could make another call to the db and there would be a "last used token" in the table
+      Request.get('/checkToken')
+        .query({token: token})
+        .end(function(err, result) {
+          if (err) {
+            // please log in again / redirect to login page
+            localStorage.removeItem('convoToken');
+            alert('please sign in again');
+            that.history.pushState(null,'/');
+          } else {
+            that.setState({signedIn: true});
+          }
+        });
+    }
+  },
+  render: function() {
+    var userPanel = this.state.signedIn ? (<UserPanel />) : '';
+    return (
+      <div>
+        <Conversation signedIn={this.state.signedIn} />
+        {userPanel}
+      </div>
+    );
+  }
+});
+
+var UserPanel = React.createClass({
+  render: function() {
+    return (<p>UserPanel</p>);
+  }
+});
+var UserWidget = React.createClass({
+  render: function() {
+    return (<p>UserWidget</p>);
+  }
+});
+
+var Conversation = React.createClass({
   getInitialState: function() {
     return {
       errorMsg: null,
@@ -20,6 +73,9 @@ var App = React.createClass({
     };
   },
   componentDidMount: function() {
+    this.startNewConvo();
+  },
+  componentWillMount: function() {
     this.startNewConvo();
   },
   showError: function(errorMsg) {
@@ -47,9 +103,6 @@ var App = React.createClass({
         });
     });
   },
-  componentWillMount: function() {
-    this.startNewConvo();
-  },
   startNewConvo: function() {
     this.getRandom().then(function(card) {
       if (this.isMounted()) {
@@ -60,10 +113,12 @@ var App = React.createClass({
       }
     }.bind(this)),
     this.setState({
+      errorMsg: null,
       prevCard: null,
       showMC: false,
       conversationEnded: false
     });
+    // i want to also clear the input box
   },
   setCurrent: function(c) {
     this.setState({currentCard: c});
@@ -98,6 +153,7 @@ var App = React.createClass({
           setConversationEnd={this.setConversationEnd}
           conversationEnded={this.state.conversationEnded}
           showError={this.showError}
+          signedIn={this.props.signedIn}
           errorMsg={this.state.errorMsg}
         />
       </div>
@@ -112,6 +168,7 @@ var FlashcardCreator = React.createClass({
 });
 */
 
+//wtf is this vestigial thing
 function getNexts(card, convoId, callback) {
   Request.get('/getMappings')
     .query({currentCardId: card.id, convoId: convoId})
@@ -216,7 +273,14 @@ var ConversationScreen = React.createClass({
   },
   render: function() {
     var prevResponse = this.props.prevCard ? (<p className="myPrevResponse">Du sa: {this.props.prevCard.phrase}</p>) : '';
-    var error = this.props.errorMsg ? (<p className="errorMsg">{this.props.errorMsg}</p>) : '';
+    // REFACTOT THIS LATER
+    var userWidget = this.props.signedIn ? (<UserWidget />) : '';
+    var error = this.props.errorMsg ? (
+      <div className="notFound">
+        <p className="errorMsg">{this.props.errorMsg}</p>
+        {userWidget}
+      </div>
+    ) : '';
     var respondable = this.props.conversationEnded ? '' :
       (
         <div className="response">
@@ -265,20 +329,24 @@ var Choices = React.createClass({
 var SignInPage = React.createClass({
   mixins: [History],
   signIn: function() {
+    var that = this;
     Request.post('/signIn')
       .send({username: this.refs.username.value, password: this.refs.password.value})
       .end(function(err, res) {
-        if (res.errorMsg) {
-          // this.props.errorMsg is 'bad creds'
+        if (err) {
           // also render the errorMsg
+          errorAlert(err);
         } else {
-          // set localStorage token
-          // navigate to wherever
+          // set localStorage token; navigate to /beginConvo
+          var token = res.body.token;
+          localStorage.setItem('convoToken', token);
+          that.history.pushState(null, '/beginConversation');
         }
       });
   },
   continue: function() {
     if (confirm("you will not be able to contribute without signing in")) {
+      localStorage.removeItem('convoToken');
       this.history.pushState(null,'/beginConversation');
     }
   },
