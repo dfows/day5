@@ -18,10 +18,12 @@ var App = React.createClass({
       signedIn: false
     }
   },
-  componentWillMount: function() {
+  componentDidMount: function() {
+    /*
     // check for token
     var that = this;
     var token = localStorage.getItem('convoToken');
+    // IDEA: make it like, if token is less than 5 days ago, relogin
     if (token) {
       // maybe i could make another call to the db and there would be a "last used token" in the table
       Request.get('/checkToken')
@@ -29,6 +31,7 @@ var App = React.createClass({
         .end(function(err, result) {
           if (err) {
             // please log in again / redirect to login page
+            console.log(err);
             localStorage.removeItem('convoToken');
             alert('please sign in again');
             that.history.pushState(null,'/');
@@ -37,6 +40,7 @@ var App = React.createClass({
           }
         });
     }
+    */
   },
   render: function() {
     var userPanel = this.state.signedIn ? (<UserPanel />) : '';
